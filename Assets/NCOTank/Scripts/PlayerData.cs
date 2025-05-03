@@ -2,7 +2,7 @@ using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
-namespace NCOTank
+namespace NGOTank
 {
 
     public enum Team 
@@ -10,16 +10,24 @@ namespace NCOTank
         Red = 0,
         Blue = 1,
     }
+
+    public enum Class
+    {
+        DPS = 0,
+        Tank = 1,
+    }
     public struct PlayerData : INetworkSerializable
     {
         public FixedString64Bytes PlayerName;
         public Team TeamId;
+        public Class ClassId;
         // public PlayerClass Class;
 
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref PlayerName);
             serializer.SerializeValue(ref TeamId);
+            serializer.SerializeValue(ref ClassId);
             // if (serializer.IsWriter)
             // {
             //     FastBufferWriter writer = serializer.GetFastBufferWriter();

@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using Unity.Collections;
+using Unity.Netcode;
 using UnityEngine;
 
-namespace NCOTank
+namespace NGOTank
 {
     public class MainMenuUI : MonoBehaviour
     {
@@ -23,13 +25,22 @@ namespace NCOTank
 
         void IniliatizeUI(){
             string[] teamNames = System.Enum.GetNames(typeof(Team));
-            List<TMP_Dropdown.OptionData> ddoptions = new();
+            string[] classNames = System.Enum.GetNames(typeof(Class));
+            List<TMP_Dropdown.OptionData> ddTeamOptions = new();
 
             foreach (var teamName in teamNames)
             {
-                ddoptions.Add(new TMP_Dropdown.OptionData{text = teamName});
+                ddTeamOptions.Add(new TMP_Dropdown.OptionData{text = teamName});
             }
-            DD_TeamId.options = ddoptions;
+            DD_TeamId.options = ddTeamOptions;
+
+            List<TMP_Dropdown.OptionData> ddClassOptions = new();
+
+            foreach (var className in classNames)
+            {
+                ddClassOptions.Add(new TMP_Dropdown.OptionData { text = className });
+            }
+            DD_ClassId.options = ddClassOptions;
 
         }
         public void OnStartServerClicked()
@@ -65,12 +76,19 @@ namespace NCOTank
         }
         public void GetPlayerData(){
             System.Enum.TryParse(typeof(Team), DD_TeamId.captionText.text, out var teamId);
-            PlayerData playerData = new PlayerData(){
+            System.Enum.TryParse(typeof(Class), DD_ClassId.captionText.text, out var classId);
+            PlayerData playerData = new(){
                 PlayerName = IF_PlayerName.text,
                 TeamId = (Team)teamId,
-                // Class = (PlayerClass)DD_ClassId.value
+                ClassId = (Class)classId
             };
             NetworkingManager.Instance.UpdatePlayerData(playerData);
+
+            using var writer = new FastBufferWriter(FixedString64Bytes.UTF8MaxLengthInBytes + sizeof(Team) + sizeof(Class), Allocator.Temp);
+            writer.WriteNetworkSerializable(playerData);
+
+            // Set the connection data in NetworkConfig
+            NetworkingManager.Singleton.NetworkConfig.ConnectionData = writer.ToArray();
         }
     }
 }

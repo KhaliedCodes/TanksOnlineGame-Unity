@@ -1,10 +1,8 @@
-using System.Collections.Generic;
 using TMPro;
-using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
-namespace NCOTank
+namespace NGOTank
 {
     public class NetworkPlayer : NetworkBehaviour
     {
@@ -14,17 +12,22 @@ namespace NCOTank
         [SerializeField] private Transform cannonTransform; // Reference to the cannon transform
                                                             // Start is called once before the first execution of Update after the MonoBehaviour is created
         // NetworkVariable<FixedString64Bytes> pName = new NetworkVariable<FixedString64Bytes>();
-        NetworkVariable<PlayerData> pData = new NetworkVariable<PlayerData>();
+        public NetworkVariable<PlayerData> pData = new NetworkVariable<PlayerData>();
         NetworkVariable<int> CurrentHealth = new NetworkVariable<int>();
         private Rigidbody rb;
         [SerializeField] private TMP_Text playerNameText;
         [SerializeField] private Transform PlayerUI;
-        private readonly int MaxHealth = 100;
+        [SerializeField] private int MaxHealth = 100;
+        [SerializeField] private int Damage = 10;
         [SerializeField] private Transform img_health;
         [SerializeField] private Bullet bulletPrefab;
         [SerializeField] private Transform bulletSpawnPoint;
         bool isDead = false;
+        [SerializeField] private Material RedMaterial;
 
+        [SerializeField] private Material BlueMaterial;
+        private Transform Panel_KillsLog;
+        [SerializeField] private TMP_Text Text_KillLog;
         void Start()
         {
             rb = GetComponent<Rigidbody>();
@@ -96,6 +99,36 @@ namespace NCOTank
             // pName.Value = value;
             pData.Value = playerData;
         }
+        [ServerRpc]
+        void ShootServerRPC()
+        {
+            Bullet bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
+            bullet.Init(OwnerClientId, Damage);
+            ShootClientRPC(bullet.transform.position, bullet.transform.rotation);
+        }
+        #endregion
+        #region Client RPCs
+        [ClientRpc]
+        void ShootClientRPC(Vector3 position, Quaternion rotation)
+        {
+            if (!NetworkManager.Singleton.IsHost)
+            {
+                Bullet bullet = Instantiate(bulletPrefab, position, rotation);
+                bullet.Init(OwnerClientId, Damage);
+            }
+        }
+
+        [ClientRpc]
+        void KillPlayerClientRpc(ulong OwnerId)
+        {
+            NetworkPlayer killer = NetworkingManager.Instance.GetPlayer(OwnerId);
+            isDead = true;
+            Debug.Log($"Player {pData.Value.PlayerName} has been killed by {killer.pData.Value.PlayerName}");
+            TMP_Text Text_KillLogInstance = Instantiate(Text_KillLog, Vector3.zero, Quaternion.identity);
+            Text_KillLogInstance.text = $"{killer.pData.Value.PlayerName} killed {pData.Value.PlayerName}";
+            Text_KillLogInstance.transform.SetParent(Panel_KillsLog);
+            Destroy(Text_KillLogInstance.gameObject, 5f); // Destroy the text after 3 seconds
+        }
         #endregion
         private void OnPlayerDataUpdated(PlayerData previousValue, PlayerData newValue)
         {
@@ -108,7 +141,9 @@ namespace NCOTank
 
             playerNameText.text = pData.Value.PlayerName.ToString();
             OnHealthUpdated(0, CurrentHealth.Value);
-            
+            Panel_KillsLog = GameObject.Find("Panel_KillsLog").transform;
+            GetComponent<Renderer>().material = (int)pData.Value.TeamId == 1 ? BlueMaterial : RedMaterial;
+
         }
 
         private void OnHealthUpdated(int previousValue, int newValue)
@@ -118,28 +153,9 @@ namespace NCOTank
             img_health.localScale =  new Vector3((float)CurrentHealth.Value/ MaxHealth , 1, 1);
             
         }
-        [ServerRpc]
-        void ShootServerRPC(){
-            Bullet bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
-            bullet.Init(OwnerClientId);
-            ShootClientRPC(bullet.transform.position, bullet.transform.rotation);
-        }
 
-        [ClientRpc]
-        void ShootClientRPC(Vector3 position, Quaternion rotation){
-            if(!NetworkManager.Singleton.IsHost){
-                Bullet bullet = Instantiate(bulletPrefab, position, rotation);
-                bullet.Init(OwnerClientId);
-            }
-        }
 
-        [ClientRpc]
-        void KillPlayerClientRpc(ulong OwnerId)
-        {
-            NetworkPlayer killer = NetworkingManager.Instance.GetPlayer(OwnerId);
-            isDead = true;
-            // Debug.Log($"Player {pName.Value} has been killed by {killer.pName.Value}");
-        }
+
 
 
         public void ApplyDamage(int damage, ulong OwnerId){
@@ -147,12 +163,13 @@ namespace NCOTank
                 Debug.LogWarning("ApplyDamage can only be called on the server.");
                 return;
             } 
+
             CurrentHealth.Value -= damage;
             CurrentHealth.Value = Mathf.Max(0, CurrentHealth.Value); // Ensure health doesn't go below 0
 
             if(CurrentHealth.Value <= 0){
                 // Destroy the player object or perform any other actions when health reaches zero
-                Debug.Log($"Player {OwnerClientId} has been destroyed.");
+                // Debug.Log($"Player {OwnerClientId} has been destroyed.");
                 KillPlayerClientRpc(OwnerId);
                 NetworkObject.Despawn();
                 // Destroy(gameObject);

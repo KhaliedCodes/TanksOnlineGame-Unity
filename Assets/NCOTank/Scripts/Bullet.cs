@@ -1,18 +1,19 @@
 using UnityEngine;
 
-namespace NCOTank
+namespace NGOTank
 {
     public class Bullet : MonoBehaviour
     {
         [SerializeField] private float speed = 20f; // Speed of the bullet
-        [SerializeField] private int Damage = 10;
+        public int Damage = 10;
         ulong OwnerId;
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         Rigidbody rb;
 
-        public void Init(ulong shooterId)
+        public void Init(ulong shooterId, int damage)
         {
             OwnerId = shooterId;
+            Damage = damage;
         }
         void Start()
         {
@@ -30,16 +31,29 @@ namespace NCOTank
 
         void OnTriggerEnter(Collider other)
         {
-            if(NetworkingManager.Instance.IsServer)
-                if(other.CompareTag("Player"))
+            if (other.CompareTag("Player")){
+                bool IsSameTeam = NetworkingManager.Instance.GetPlayer(OwnerId).pData.Value.TeamId == other.GetComponent<NetworkPlayer>().pData.Value.TeamId;
+                if (IsSameTeam)
                 {
+                    Debug.LogWarning("Cannot damage a player on the same team.");
+                    return;
+                }
+                if (NetworkingManager.Instance.IsServer)
+
+                {
+
                     // Deal damage to the player
                     if (other.TryGetComponent<NetworkPlayer>(out var player))
                     {
                         player.ApplyDamage(Damage, OwnerId);
                     }
-                    Destroy(gameObject); // Destroy the bullet on impact
+                    // Destroy the bullet on impact
                 }
+            }
+            
+                
+            Destroy(gameObject);
         }
+        
     }
 }

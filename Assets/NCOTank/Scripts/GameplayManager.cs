@@ -3,12 +3,13 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace NCOTank
+namespace NGOTank
 {
     public class GameplayManager : MonoBehaviour
     {
         [SerializeField] private Transform[] spawningPosList;
-        [SerializeField] private NetworkObject playerPrefab;
+        [SerializeField] private NetworkObject playerDPSPrefab;
+        [SerializeField] private NetworkObject playerTankPrefab;
         private int currentSpawningIndex = 0;
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Start()
@@ -26,18 +27,25 @@ namespace NCOTank
                 SpawnNextPlayer(clientId);
             }
         }
-
         private void SpawnNextPlayer(ulong clientId)
         {
             // Spawn the player object for the client
-            if (NetworkingManager.Instance.IsServer)
-            {
-                var playerObject = Instantiate(playerPrefab, spawningPosList[currentSpawningIndex]);
+            // if (NetworkingManager.Instance.IsServer)
+            // {
+                NetworkingManager.Instance.TryGetPlayerData(clientId, out PlayerData playerData);
+                NetworkObject playerObject;
+                if (playerData.ClassId == Class.DPS)
+                    playerObject = Instantiate(playerDPSPrefab, spawningPosList[currentSpawningIndex]);
+                else
+                    playerObject = Instantiate(playerTankPrefab, spawningPosList[currentSpawningIndex]);
+
+
+
                 // playerObject.GetComponent<NetworkObject>().Spawn();
                 playerObject.SpawnAsPlayerObject(clientId);
                 currentSpawningIndex++;
                 currentSpawningIndex %= spawningPosList.Length; // Loop back to the first spawn point
-            }
+            // }
         }
 
         // Update is called once per frame
@@ -47,6 +55,7 @@ namespace NCOTank
         }
         void OnDestroy()
         {
+            if(NetworkingManager.Instance.SceneManager == null) return;
             NetworkingManager.Instance.SceneManager.OnLoadComplete -= NetSceneMgr_LoadCompleted;
 
             // NetworkingManager.Instance.OnClientConnectedCallback -= SpawnNextPlayer;
