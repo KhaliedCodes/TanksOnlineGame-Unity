@@ -1,5 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using Unity.Collections;
 using Unity.Netcode;
 using Unity.VisualScripting;
@@ -14,10 +17,10 @@ namespace NGOTank
         public const string SceneName_MainMenu = "MainMenu";
         public const string SceneName_Gameplay = "Gameplay";
         public string LocalPlayerName;
-        Dictionary<ulong, NetworkPlayer> players = new Dictionary<ulong, NetworkPlayer>();
+        public Dictionary<ulong, NetworkPlayer> players = new Dictionary<ulong, NetworkPlayer>();
 
         public PlayerData playerData {get; private set; } = new PlayerData();
-        private Dictionary<ulong, PlayerData> clientData = new Dictionary<ulong, PlayerData>();
+        public Dictionary<ulong, PlayerData> clientData = new Dictionary<ulong, PlayerData>();
         private void Awake()
         {
             if (instance == null)
@@ -160,5 +163,50 @@ namespace NGOTank
             this.playerData = playerData;
         }
 
+
+        public GameState CheckAllPlayersOnOneTeamDead(){
+            bool BlueWins = players.Values.Where(player => player.pData.Value.TeamId == Team.Red).All(player => player.isDead);
+            bool RedWins = players.Values.Where(player => player.pData.Value.TeamId == Team.Blue).All(player => player.isDead);
+            Debug.Log($"BlueWins: {BlueWins}, RedWins: {RedWins}");
+            if (BlueWins)
+            {
+                Debug.Log("Red Team Lose");
+                // Handle Red Team Lose logic here
+                return GameState.BlueWins;
+            }
+            else if (RedWins)
+            {
+                Debug.Log("Blue Team Lose");
+                // Handle Blue Team Lose logic here
+                return GameState.RedWins;
+            }
+            return GameState.InProgress;
+        }
+
+
+    
+        public void EndGame(){
+            StartCoroutine(ShutDownDelay(5f));
+        }
+        IEnumerator ShutDownDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            Debug.Log("Game Over! Returning to Main Menu.");
+            if (!IsHost)
+            {
+                // NetworkingManager.Instance.SceneManager.LoadScene(NetworkingManager.SceneName_MainMenu, UnityEngine.SceneManagement.LoadSceneMode.Single);
+                Shutdown();
+                UnityEngine.SceneManagement.SceneManager.LoadScene(SceneName_MainMenu, UnityEngine.SceneManagement.LoadSceneMode.Single);
+            
+            }
+            if (IsServer || IsHost)
+            {
+                NetworkingManager.Instance.clientData.Clear();
+                NetworkingManager.Instance.players.Clear();
+                NetworkingManager.Instance.Shutdown();
+                NetworkingManager.Instance.SceneManager.LoadScene(NetworkingManager.SceneName_MainMenu, UnityEngine.SceneManagement.LoadSceneMode.Single);
+            }
+
+        }
     }
 }

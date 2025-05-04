@@ -774,9 +774,11 @@ MonoBehaviour:
   img_health: {fileID: 7565548411369884478}
   bulletPrefab: {fileID: -3288001953830127665, guid: 6e6857f7006f4984a8e3076f75917d32, type: 3}
   bulletSpawnPoint: {fileID: 7322839000780573666}
+  isDead: 0
   RedMaterial: {fileID: 2100000, guid: 0cacfe5793de7d546ac4b6c32f75e288, type: 2}
   BlueMaterial: {fileID: 2100000, guid: 9cce766d7e4e32f4494d389f31af3fb2, type: 2}
   Text_KillLog: {fileID: 843818784088617429, guid: c6a86142e1978c54e995a455b1f6183f, type: 3}
+  Text_ResultPrefab: {fileID: 1609500944328446088, guid: 6e4181b57e114584787942bb52d1a3cc, type: 3}
 --- !u!54 &4810516129858802945
 Rigidbody:
   m_ObjectHideFlags: 0

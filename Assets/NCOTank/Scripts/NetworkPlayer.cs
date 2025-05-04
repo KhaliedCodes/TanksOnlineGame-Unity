@@ -1,6 +1,8 @@
+using System.Collections;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace NGOTank
 {
@@ -11,7 +13,7 @@ namespace NGOTank
         [SerializeField] private float rotationSpeed = 720f; // Speed of the player rotation
         [SerializeField] private Transform cannonTransform; // Reference to the cannon transform
                                                             // Start is called once before the first execution of Update after the MonoBehaviour is created
-        // NetworkVariable<FixedString64Bytes> pName = new NetworkVariable<FixedString64Bytes>();
+                                                            // NetworkVariable<FixedString64Bytes> pName = new NetworkVariable<FixedString64Bytes>();
         public NetworkVariable<PlayerData> pData = new NetworkVariable<PlayerData>();
         NetworkVariable<int> CurrentHealth = new NetworkVariable<int>();
         private Rigidbody rb;
@@ -22,12 +24,15 @@ namespace NGOTank
         [SerializeField] private Transform img_health;
         [SerializeField] private Bullet bulletPrefab;
         [SerializeField] private Transform bulletSpawnPoint;
-        bool isDead = false;
+        public bool isDead = false;
         [SerializeField] private Material RedMaterial;
 
         [SerializeField] private Material BlueMaterial;
         private Transform Panel_KillsLog;
         [SerializeField] private TMP_Text Text_KillLog;
+
+        private GameObject Panel_Result;
+        [SerializeField] private TMP_Text Text_ResultPrefab;
         void Start()
         {
             rb = GetComponent<Rigidbody>();
@@ -37,7 +42,8 @@ namespace NGOTank
         void Update()
         {
             PlayerUI.LookAt(Camera.main.transform.position);
-            if(IsLocalPlayer && !isDead){
+            if (IsLocalPlayer && !isDead)
+            {
                 // Get input from the player
                 float horizontalInput = Input.GetAxis("Horizontal");
                 float verticalInput = Input.GetAxis("Vertical");
@@ -51,7 +57,7 @@ namespace NGOTank
 
                 // Move the player
                 rb.MovePosition(transform.position + moveSpeed * Time.deltaTime * moveDirection);
-                
+
                 if (right || left)
                 {
                     float rotationAngle = 0;
@@ -71,8 +77,8 @@ namespace NGOTank
                     ShootServerRPC();
                 }
             }
-            
-        
+
+
         }
 
         public override void OnNetworkSpawn()
@@ -83,10 +89,13 @@ namespace NGOTank
             if (IsLocalPlayer)
             {
                 UpdatePlayerDataServerRpc(NetworkingManager.Instance.playerData);
-            }else {
+            }
+            else
+            {
                 InitilatizePlayer();
             }
-            if(IsServer){
+            if (IsServer)
+            {
                 CurrentHealth.Value = MaxHealth;
             }
             NetworkingManager.Instance.AddPlayer(this);
@@ -136,7 +145,8 @@ namespace NGOTank
             //update in ui
             Debug.Log($"client{OwnerClientId} update playerData to {pData}");
         }
-        void InitilatizePlayer(){
+        void InitilatizePlayer()
+        {
             // Set the player name text to the player's name
 
             playerNameText.text = pData.Value.PlayerName.ToString();
@@ -144,35 +154,39 @@ namespace NGOTank
             Panel_KillsLog = GameObject.Find("Panel_KillsLog").transform;
             GetComponent<Renderer>().material = (int)pData.Value.TeamId == 1 ? BlueMaterial : RedMaterial;
 
+            Panel_Result = GameObject.Find("Panel_Result");
         }
 
         private void OnHealthUpdated(int previousValue, int newValue)
         {
             // Update the health UI or perform any other actions based on health changes
-            Debug.Log($"CurrentHealth.Value/ MaxHealth: {CurrentHealth.Value/ MaxHealth}");
-            img_health.localScale =  new Vector3((float)CurrentHealth.Value/ MaxHealth , 1, 1);
-            
+            Debug.Log($"CurrentHealth.Value/ MaxHealth: {CurrentHealth.Value / MaxHealth}");
+            img_health.localScale = new Vector3((float)CurrentHealth.Value / MaxHealth, 1, 1);
+
         }
 
 
 
 
 
-        public void ApplyDamage(int damage, ulong OwnerId){
-            if(!IsServer){
+        public void ApplyDamage(int damage, ulong OwnerId)
+        {
+            if (!IsServer)
+            {
                 Debug.LogWarning("ApplyDamage can only be called on the server.");
                 return;
-            } 
+            }
 
             CurrentHealth.Value -= damage;
             CurrentHealth.Value = Mathf.Max(0, CurrentHealth.Value); // Ensure health doesn't go below 0
 
-            if(CurrentHealth.Value <= 0){
+            if (CurrentHealth.Value <= 0)
+            {
                 // Destroy the player object or perform any other actions when health reaches zero
-                // Debug.Log($"Player {OwnerClientId} has been destroyed.");
                 KillPlayerClientRpc(OwnerId);
+                ShowResultUiClientRpc(NetworkingManager.Instance.CheckAllPlayersOnOneTeamDead());
                 NetworkObject.Despawn();
-                // Destroy(gameObject);
+                isDead = true;
             }
         }
         public override void OnNetworkDespawn()
@@ -182,9 +196,37 @@ namespace NGOTank
             CurrentHealth.OnValueChanged -= OnHealthUpdated;
 
 
-            NetworkingManager.Instance.RemovePlayer(OwnerClientId);
+            // NetworkingManager.Instance.RemovePlayer(OwnerClientId);
         }
+        [ClientRpc]
+        void ShowResultUiClientRpc(GameState gameState)
+        {
+            Debug.Log($"Game state from the client side: {gameState}");
+            if (gameState == GameState.BlueWins)
+            {
+                // Handle Blue Team Lose logic here
+                Panel_Result.gameObject.GetComponent<Image>().color = new Color(0, 0, 1, 0.5f);
+                TMP_Text Text_Result = Instantiate(Text_ResultPrefab, Vector3.zero, Quaternion.identity);
+                Text_Result.transform.SetParent(Panel_Result.transform);
+                Text_Result.transform.localPosition = new Vector3(0, 0, 0);
+                Text_Result.text = "Blue Team Wins";
+                NetworkingManager.Instance.EndGame();
+            }
+            else if (gameState == GameState.RedWins)
+            {
+                // Handle Red Team Lose logic here
+                Panel_Result.gameObject.GetComponent<Image>().color = new Color(1, 0, 0, 0.5f);
+                TMP_Text Text_Result = Instantiate(Text_ResultPrefab, Vector3.zero, Quaternion.identity);
+                Text_Result.transform.SetParent(Panel_Result.transform);
+                Text_Result.transform.localPosition = new Vector3(0, 0, 0);
+                Text_Result.text = "Red Team Wins";
+                NetworkingManager.Instance.EndGame();
+            }
+
+        }
+
+
     }
 
-    
+
 }
