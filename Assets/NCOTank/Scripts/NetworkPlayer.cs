@@ -23,6 +23,7 @@ namespace NGOTank
         [SerializeField] private int Damage = 10;
         [SerializeField] private Transform img_health;
         [SerializeField] private Bullet bulletPrefab;
+        [SerializeField] private Grenade GrenadePrefab;
         [SerializeField] private Transform bulletSpawnPoint;
         public bool isDead = false;
         [SerializeField] private Material RedMaterial;
@@ -33,6 +34,7 @@ namespace NGOTank
 
         private GameObject Panel_Result;
         [SerializeField] private TMP_Text Text_ResultPrefab;
+        private Material materialToApply;
         void Start()
         {
             rb = GetComponent<Rigidbody>();
@@ -51,6 +53,7 @@ namespace NGOTank
 
                 bool left = Input.GetKey(KeyCode.LeftArrow);
                 bool shoot = Input.GetKeyDown(KeyCode.Space);
+                bool ability = Input.GetKeyDown(KeyCode.E);
 
                 // Calculate the movement direction
                 Vector3 moveDirection = new Vector3(horizontalInput, 0, verticalInput).normalized;
@@ -75,6 +78,10 @@ namespace NGOTank
                 if (shoot)
                 {
                     ShootServerRPC();
+                }
+                if (ability)
+                {
+                    AbilityServerRPC();
                 }
             }
 
@@ -112,8 +119,20 @@ namespace NGOTank
         void ShootServerRPC()
         {
             Bullet bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
-            bullet.Init(OwnerClientId, Damage);
+            bullet.Init(OwnerClientId, Damage, materialToApply);
             ShootClientRPC(bullet.transform.position, bullet.transform.rotation);
+            
+        }
+
+        [ServerRpc]
+        void AbilityServerRPC()
+        {
+            if (pData.Value.ClassId == Class.DPS)
+            {
+                Grenade grenade = Instantiate(GrenadePrefab, transform.position + Vector3.up, Quaternion.identity);
+                grenade.Init(OwnerClientId, materialToApply);
+                AbilityClientRPC(grenade.transform.position, grenade.transform.rotation);
+            }
         }
         #endregion
         #region Client RPCs
@@ -122,11 +141,22 @@ namespace NGOTank
         {
             if (!NetworkManager.Singleton.IsHost)
             {
-                Bullet bullet = Instantiate(bulletPrefab, position, rotation);
-                bullet.Init(OwnerClientId, Damage);
+                Bullet bullet = Instantiate(bulletPrefab, position + Vector3.up, rotation);
+                bullet.Init(OwnerClientId, Damage, materialToApply);
             }
         }
-
+        [ClientRpc]
+        void AbilityClientRPC(Vector3 position, Quaternion rotation)
+        {
+            if (!NetworkManager.Singleton.IsHost)
+            {
+                if (pData.Value.ClassId == Class.DPS)
+                {
+                    Grenade grenade = Instantiate(GrenadePrefab, position, rotation);
+                    grenade.Init(OwnerClientId, materialToApply);
+                }
+            }
+        }
         [ClientRpc]
         void KillPlayerClientRpc(ulong OwnerId)
         {
@@ -155,6 +185,7 @@ namespace NGOTank
             GetComponent<Renderer>().material = (int)pData.Value.TeamId == 1 ? BlueMaterial : RedMaterial;
 
             Panel_Result = GameObject.Find("Panel_Result");
+            materialToApply = pData.Value.TeamId == Team.Red ? RedMaterial : BlueMaterial;
         }
 
         private void OnHealthUpdated(int previousValue, int newValue)

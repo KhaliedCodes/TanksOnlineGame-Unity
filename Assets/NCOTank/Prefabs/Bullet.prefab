@@ -14,8 +14,8 @@ GameObject:
   - component: {fileID: 1581043396402255225}
   - component: {fileID: -3288001953830127665}
   - component: {fileID: 6745812670296994181}
-  m_Layer: 0
-  m_Name: Sphere
+  m_Layer: 6
+  m_Name: Bullet
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -123,6 +123,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 20
+  Damage: 10
 --- !u!54 &6745812670296994181
 Rigidbody:
   m_ObjectHideFlags: 0
