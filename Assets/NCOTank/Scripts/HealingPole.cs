@@ -9,6 +9,7 @@ namespace NGOTank
         [SerializeField] private int Heal = 20;
         ulong OwnerId;
         List<Collider> hitColliders = new List<Collider>();
+        private float HealTime = 0f; // Time between heals in seconds
         public void Init(ulong shooterId, Material material)
         {
             OwnerId = shooterId;
@@ -21,8 +22,8 @@ namespace NGOTank
 
         void Update()
         {
-            
-            if (Time.frameCount % (1 * 60) == 0) // 60 FPS * 5 seconds
+            HealTime += Time.deltaTime; // Increment the time since the grenade was created
+            if (HealTime >= 1) // 60 FPS * 5 seconds
             {
                 foreach (Collider player in hitColliders)
                 {
@@ -31,6 +32,7 @@ namespace NGOTank
                         networkPlayer.ApplyHeal(Heal); // Negative damage = healing
                     }
                 }
+                HealTime = 0;
             }
             
         }

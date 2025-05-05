@@ -36,6 +36,9 @@ namespace NGOTank
         private GameObject Panel_Result;
         [SerializeField] private TMP_Text Text_ResultPrefab;
         private Material materialToApply;
+        public float abilityCooldown = 5f; // Cooldown time in seconds for the ability
+
+        private float timePassed = 0f;
         void Start()
         {
             rb = GetComponent<Rigidbody>();
@@ -80,9 +83,11 @@ namespace NGOTank
                 {
                     ShootServerRPC();
                 }
-                if (ability)
+                timePassed += Time.deltaTime;
+                if (ability && timePassed >= abilityCooldown)
                 {
                     AbilityServerRPC();
+                    timePassed = 0f; // Reset the cooldown timer
                 }
             }
 
