@@ -24,6 +24,7 @@ namespace NGOTank
         [SerializeField] private Transform img_health;
         [SerializeField] private Bullet bulletPrefab;
         [SerializeField] private Grenade GrenadePrefab;
+        [SerializeField] private HealingPole HealingPolePrefab;
         [SerializeField] private Transform bulletSpawnPoint;
         public bool isDead = false;
         [SerializeField] private Material RedMaterial;
@@ -132,6 +133,11 @@ namespace NGOTank
                 Grenade grenade = Instantiate(GrenadePrefab, transform.position + Vector3.up, Quaternion.identity);
                 grenade.Init(OwnerClientId, materialToApply);
                 AbilityClientRPC(grenade.transform.position, grenade.transform.rotation);
+            }else if (pData.Value.ClassId == Class.Tank)
+            {
+                HealingPole healingPole = Instantiate(HealingPolePrefab, transform.position, Quaternion.identity);
+                healingPole.Init(OwnerClientId, materialToApply);
+                AbilityClientRPC(healingPole.transform.position, healingPole.transform.rotation);
             }
         }
         #endregion
@@ -141,7 +147,7 @@ namespace NGOTank
         {
             if (!NetworkManager.Singleton.IsHost)
             {
-                Bullet bullet = Instantiate(bulletPrefab, position + Vector3.up, rotation);
+                Bullet bullet = Instantiate(bulletPrefab, position, rotation);
                 bullet.Init(OwnerClientId, Damage, materialToApply);
             }
         }
@@ -155,7 +161,12 @@ namespace NGOTank
                     Grenade grenade = Instantiate(GrenadePrefab, position, rotation);
                     grenade.Init(OwnerClientId, materialToApply);
                 }
-            }
+                else if (pData.Value.ClassId == Class.Tank)
+                {
+                    HealingPole healingPole = Instantiate(HealingPolePrefab, position, rotation);
+                    healingPole.Init(OwnerClientId, materialToApply);
+                }
+            } 
         }
         [ClientRpc]
         void KillPlayerClientRpc(ulong OwnerId)
@@ -219,6 +230,20 @@ namespace NGOTank
                 NetworkObject.Despawn();
                 isDead = true;
             }
+        }
+
+
+        public void ApplyHeal(int heal)
+        {
+            if (!IsServer)
+            {
+                Debug.LogWarning("ApplyDamage can only be called on the server.");
+                return;
+            }
+
+            CurrentHealth.Value += heal;
+            CurrentHealth.Value = Mathf.Min(MaxHealth, CurrentHealth.Value); // Ensure health doesn't go above MaxHealth
+
         }
         public override void OnNetworkDespawn()
         {

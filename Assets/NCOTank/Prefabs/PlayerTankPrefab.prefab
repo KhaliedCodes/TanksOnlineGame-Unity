@@ -773,6 +773,8 @@ MonoBehaviour:
   Damage: 10
   img_health: {fileID: 7565548411369884478}
   bulletPrefab: {fileID: -3288001953830127665, guid: 6e6857f7006f4984a8e3076f75917d32, type: 3}
+  GrenadePrefab: {fileID: 0}
+  HealingPolePrefab: {fileID: 5473389744859905621, guid: 1bff7684315740844af162adb7ae68e6, type: 3}
   bulletSpawnPoint: {fileID: 7322839000780573666}
   isDead: 0
   RedMaterial: {fileID: 2100000, guid: 0cacfe5793de7d546ac4b6c32f75e288, type: 2}
