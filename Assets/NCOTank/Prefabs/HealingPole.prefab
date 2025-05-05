@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 1038206692641890951}
   - component: {fileID: 4128558589560263234}
   - component: {fileID: 5473389744859905621}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: HealingPole
   m_TagString: Untagged
   m_Icon: {fileID: 0}
